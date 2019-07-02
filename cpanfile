@@ -1,0 +1,2 @@
+requires 'Curses';
+requires 'Moo';

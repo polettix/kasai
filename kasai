@@ -1,0 +1,267 @@
+#!/usr/bin/env perl
+use 5.024001;
+use warnings;
+use experimental qw< postderef signatures >;
+no warnings qw< experimental::postderef experimental::signatures >;
+
+use Curses;
+use Time::HiRes qw< sleep >;
+
+use constant WIDTH  => 80;
+use constant HEIGHT => 24;
+
+my $field = read_field();
+use Data::Dumper;
+print Dumper($field);
+#exit 0;
+
+initscr();
+curs_set(0);
+my $win = Curses->new;
+#for my $x (0 .. WIDTH - 1) {
+#   for my $y (0 .. HEIGHT - 1) {
+#      $win->addstr($y, $x, '.');
+#   }
+#   $win->refresh;
+#   sleep 0.5;
+#}
+
+
+$win->nodelay(1);
+$field->{men} = [[$field->{pos_for}{start}{A}, 0]];
+$field->{score} = 9;
+refresh_field($win, $field);
+DONE:
+while ('necessary') {
+   while ((my $key = $win->getch()) ne ERR) {
+      last DONE if $key eq 'q';
+   }
+   my @men = splice @{$field->{men}};
+   for my $man (@men) {
+      if (my $m = move_man($win, $field, $man)) {
+         push @{$field->{men}}, $m;
+      }
+      else {
+         $field->{score}++;
+      }
+   }
+   $win->refresh;
+   sleep 0.5;
+}
+
+
+endwin();
+
+sub increase_score {
+   my ($win, $field) = @_;
+   $field->{score} += 1;
+   wwrite($win, $field->{pos_for}{score}, $field->{score});
+   return $win;
+}
+
+sub wwrite {
+   my ($win, $p, $text) = @_;
+   $win->addstr($p->[0], $p->[1], $text);
+   return $win;
+}
+
+sub move_man {
+   my ($win, $field, $man) = @_;
+   my ($sequence, $n) = @$man;
+   wwrite($win, $sequence->[$n], ' ');
+   ++$n;
+   if ($n > $#$sequence) {
+      my $path = $field->{pos_for}{path};
+      if ("$path" ne "$sequence") {
+         ($sequence, $n) = ($path, 0);
+      }
+      else {
+         increase_score($win, $field);
+         return;
+      }
+   }
+   wwrite($win, $sequence->[$n], '@');
+   return [$sequence, $n];
+}
+
+sub refresh_field {
+   my ($win, $field) = @_;
+   my @f = @{$field->{field}};
+   for my $y (0 .. $#f) {
+      my $line = $f[$y];
+      for my $x (0 .. $#$line) {
+         $win->addstr($y, $x, $line->[$x]);
+      }
+   }
+   for my $man (@{$field->{men}}) {
+      my $pos = $man->[0][$man->[1]];
+      wwrite($win, $pos, '@');
+   }
+   wwrite($win, $field->{pos_for}{score}, $field->{score});
+   $win->refresh();
+   return $win;
+}
+
+sub read_field {
+   my @field;
+   my %pos_for;
+   my $y = 0;
+   $pos_for{path} = \my @path;
+   $pos_for{savers} = \my @savers;
+
+   my @paths;
+   while (<DATA>) {
+      my ($type, @line) = split m{}mxs;
+      if ($type eq '$') { # where the score will be
+         for my $x (0 .. $#line) {
+            if ($line[$x] eq '$') {
+               $pos_for{score} = [$y, $x];
+               $line[$x] = ' ';
+            }
+         }
+      }
+      elsif ($type eq '0') {
+         $pos_for{miss} = \my @misses;
+         for my $x (0 .. $#line) {
+            if ($line[$x] eq '0') {
+               push @misses, [$y, $x];
+               $line[$x] = ' ';
+            }
+         }
+      }
+      elsif (($type eq '@') || ($type eq '?')) {
+         for my $x (0 .. $#line) {
+            (my $v = $line[$x]) =~ m{\d}mxs or next;
+            my $record = {
+               x => $x,
+               y => $y,
+            };
+            $record->{bounce} = 1 if $type eq '?';
+            push @{$paths[$v]}, $record;
+            $line[$x] = ' ';
+         }
+      }
+      elsif ($type eq '!') {
+         $_ = '-' for @line;
+      }
+      elsif ($type eq '&') {
+         for (my $x = 0; $x < @line; ) {
+            if ($line[$x] eq '@') {
+               push @savers, [$y, $x];
+               while ($line[$x] ne ' ') {
+                  $line[$x++] = ' ';
+               }
+            }
+            else {
+               $x++;
+            }
+         }
+      }
+      push @field, \@line;
+      ++$y;
+   }
+
+   use Data::Dumper; $Data::Dumper::Indent = 1;
+
+   my @starts;
+   for my $p (@paths) {
+      my ($s, @p) = sort {($a->{x} <=> $b->{x}) || ($a->{y} <=> $b->{y})} @$p;
+      push @starts, $s;
+      ($s->{next}, $s) = ($_, $_) for @p;
+      $s->{next} = $starts[0] if @starts > 1;
+   }
+   shift @starts;
+
+   print Dumper \@starts; exit 0;
+
+   return {
+      field => \@field,
+      pos_for => \%pos_for,
+      paths => \@starts,
+   };
+}
+
+package TrajectoryStop {
+   use Moo;
+   use warnings;
+   use experimental qw< postderef signatures >;
+   no warnings qw< experimental::postderef experimental::signatures >;
+
+   has x => (is => 'rw');
+   has y => (is => 'rw');
+   has preds => (is => 'rw', default => sub { return [] });
+   has succ  => (is => 'rw');
+   has fail  => (is => 'rw');
+   has bounced => (is => 'rw', default => 0);
+   has busy => (is => 'rw', default => 0);
+   has still => (is => 'rw', default => 0);
+
+   sub emits ($self) {
+      my ($busy, $still) = ($self->busy, $self->still);
+      die "cannot be still but not busy\n" if $still && !$busy;
+      return $busy && !$still ? 1 : 0;
+   }
+   sub accepts ($self) {
+      my ($busy, $still) = ($self->busy, $self->still);
+      die "cannot be still but not busy\n" if $still && !$busy;
+      return $busy && $still ? 0 : 1;
+   }
+   sub engage ($self, $still = 0) {
+      $self->busy(1);
+      $self->still($still);
+      return $self;
+   }
+   sub free ($self) {
+      $self->busy(0);
+      $self->still(0);
+      return $self;
+   }
+}
+
+package Trajectories {
+   use Moo;
+   use warnings;
+   use experimental qw< postderef signatures >;
+   no warnings qw< experimental::postderef experimental::signatures >;
+   use Scalar::Util 'refaddr';
+
+   has starts => (is => 'rw', default => sub { return [] });
+   has ends   => (is => 'rw', default => sub { return [] });
+
+   sub _advance ($self, $ts) {
+      return 0 unless $ts;
+
+      my $n = 0;
+      $n += $self->_advance($_) for $ts->succ->@*;
+      die "jam, too many coming\n" if $n > 1;
+      die "jam, still elements present\n" if $n == 1 && !$ts->accepts;
+      my $retval = $self->emits;
+      $ts->free unless $ts->still;
+      $ts->engage if $n;
+      return $retval;
+   }
+
+   sub advance ($self) {
+      my $n = 0;
+      $n += $self->_advance($_) for $self->ends->@*;
+      return $n;
+   }
+}
+
+
+
+__DATA__
+$[  ~~~~~ ~~~~            $                         MISS
+0|=~~~~ ~~~                                         0 0 0
+ |~~~
+@[1              0
+@|=1         0       0
+@|                                   0
+@[2 1     0             0        0       0
+@|=
+@|   0  0                 0   0             0      0
+@[                                              0     0
+@|=                                                     __n_
+?|    0                     0                 0        [ +  \
+&[  @---@                 @---@             @---@      "o--o"
+-------------------------------------------------------------
