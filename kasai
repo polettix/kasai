@@ -10,48 +10,50 @@ use Time::HiRes qw< sleep >;
 use constant WIDTH  => 80;
 use constant HEIGHT => 24;
 
-my $field = read_field();
-use Data::Dumper;
-print Dumper($field);
-#exit 0;
+my $log = sub { say {*STDERR} "@_" };
 
-initscr();
-curs_set(0);
-my $win = Curses->new;
-#for my $x (0 .. WIDTH - 1) {
-#   for my $y (0 .. HEIGHT - 1) {
-#      $win->addstr($y, $x, '.');
-#   }
-#   $win->refresh;
-#   sleep 0.5;
-#}
-
-
-$win->nodelay(1);
-$field->{men} = [[$field->{pos_for}{start}{A}, 0]];
-$field->{score} = 9;
-refresh_field($win, $field);
-DONE:
-while ('necessary') {
-   while ((my $key = $win->getch()) ne ERR) {
-      last DONE if $key eq 'q';
-   }
-   my @men = splice @{$field->{men}};
-   for my $man (@men) {
-      if (my $m = move_man($win, $field, $man)) {
-         push @{$field->{men}}, $m;
-      }
-      else {
-         $field->{score}++;
-      }
-   }
-   $win->refresh;
-   sleep 0.5;
-}
-
-
-endwin();
-
+# my $field = read_field();
+# use Data::Dumper;
+# print Dumper($field);
+# #exit 0;
+# 
+# initscr();
+# curs_set(0);
+# my $win = Curses->new;
+# #for my $x (0 .. WIDTH - 1) {
+# #   for my $y (0 .. HEIGHT - 1) {
+# #      $win->addstr($y, $x, '.');
+# #   }
+# #   $win->refresh;
+# #   sleep 0.5;
+# #}
+# 
+# 
+# $win->nodelay(1);
+# $field->{men} = [[$field->{pos_for}{start}{A}, 0]];
+# $field->{score} = 9;
+# refresh_field($win, $field);
+# DONE:
+# while ('necessary') {
+#    while ((my $key = $win->getch()) ne ERR) {
+#       last DONE if $key eq 'q';
+#    }
+#    my @men = splice @{$field->{men}};
+#    for my $man (@men) {
+#       if (my $m = move_man($win, $field, $man)) {
+#          push @{$field->{men}}, $m;
+#       }
+#       else {
+#          $field->{score}++;
+#       }
+#    }
+#    $win->refresh;
+#    sleep 0.5;
+# }
+# 
+# 
+# endwin();
+# 
 sub increase_score {
    my ($win, $field) = @_;
    $field->{score} += 1;
@@ -102,153 +104,566 @@ sub refresh_field {
    return $win;
 }
 
-sub read_field {
-   my @field;
-   my %pos_for;
-   my $y = 0;
-   $pos_for{path} = \my @path;
-   $pos_for{savers} = \my @savers;
-
-   my @paths;
-   while (<DATA>) {
-      my ($type, @line) = split m{}mxs;
-      if ($type eq '$') { # where the score will be
-         for my $x (0 .. $#line) {
-            if ($line[$x] eq '$') {
-               $pos_for{score} = [$y, $x];
-               $line[$x] = ' ';
-            }
-         }
-      }
-      elsif ($type eq '0') {
-         $pos_for{miss} = \my @misses;
-         for my $x (0 .. $#line) {
-            if ($line[$x] eq '0') {
-               push @misses, [$y, $x];
-               $line[$x] = ' ';
-            }
-         }
-      }
-      elsif (($type eq '@') || ($type eq '?')) {
-         for my $x (0 .. $#line) {
-            (my $v = $line[$x]) =~ m{\d}mxs or next;
-            my $record = {
-               x => $x,
-               y => $y,
-            };
-            $record->{bounce} = 1 if $type eq '?';
-            push @{$paths[$v]}, $record;
-            $line[$x] = ' ';
-         }
-      }
-      elsif ($type eq '!') {
-         $_ = '-' for @line;
-      }
-      elsif ($type eq '&') {
-         for (my $x = 0; $x < @line; ) {
-            if ($line[$x] eq '@') {
-               push @savers, [$y, $x];
-               while ($line[$x] ne ' ') {
-                  $line[$x++] = ' ';
-               }
-            }
-            else {
-               $x++;
-            }
-         }
-      }
-      push @field, \@line;
-      ++$y;
-   }
-
-   use Data::Dumper; $Data::Dumper::Indent = 1;
-
-   my @starts;
-   for my $p (@paths) {
-      my ($s, @p) = sort {($a->{x} <=> $b->{x}) || ($a->{y} <=> $b->{y})} @$p;
-      push @starts, $s;
-      ($s->{next}, $s) = ($_, $_) for @p;
-      $s->{next} = $starts[0] if @starts > 1;
-   }
-   shift @starts;
-
-   print Dumper \@starts; exit 0;
-
-   return {
-      field => \@field,
-      pos_for => \%pos_for,
-      paths => \@starts,
-   };
-}
-
-package TrajectoryStop {
+package GnW::Position {
    use Moo;
    use warnings;
    use experimental qw< postderef signatures >;
    no warnings qw< experimental::postderef experimental::signatures >;
-
-   has x => (is => 'rw');
-   has y => (is => 'rw');
-   has preds => (is => 'rw', default => sub { return [] });
-   has succ  => (is => 'rw');
-   has fail  => (is => 'rw');
-   has bounced => (is => 'rw', default => 0);
-   has busy => (is => 'rw', default => 0);
-   has still => (is => 'rw', default => 0);
-
-   sub emits ($self) {
-      my ($busy, $still) = ($self->busy, $self->still);
-      die "cannot be still but not busy\n" if $still && !$busy;
-      return $busy && !$still ? 1 : 0;
-   }
-   sub accepts ($self) {
-      my ($busy, $still) = ($self->busy, $self->still);
-      die "cannot be still but not busy\n" if $still && !$busy;
-      return $busy && $still ? 0 : 1;
-   }
-   sub engage ($self, $still = 0) {
-      $self->busy(1);
-      $self->still($still);
-      return $self;
-   }
-   sub free ($self) {
-      $self->busy(0);
-      $self->still(0);
-      return $self;
-   }
-}
-
-package Trajectories {
-   use Moo;
-   use warnings;
-   use experimental qw< postderef signatures >;
-   no warnings qw< experimental::postderef experimental::signatures >;
+   use Ouch ':trytiny_var';
    use Scalar::Util 'refaddr';
 
-   has starts => (is => 'rw', default => sub { return [] });
-   has ends   => (is => 'rw', default => sub { return [] });
+   has id        => (is => 'rw', default => sub ($s) { refaddr($s) });
+   has current   => (is => 'rw', weak_ref => 1, default => undef);
+   has succ_for  => (is => 'rw', default => sub { return {} });
+   has ui_data   => (is => 'rw');
 
-   sub _advance ($self, $ts) {
-      return 0 unless $ts;
-
-      my $n = 0;
-      $n += $self->_advance($_) for $ts->succ->@*;
-      die "jam, too many coming\n" if $n > 1;
-      die "jam, still elements present\n" if $n == 1 && !$ts->accepts;
-      my $retval = $self->emits;
-      $ts->free unless $ts->still;
-      $ts->engage if $n;
-      return $retval;
+   sub remove_if_current ($self, $item) {
+      return unless defined $item;
+      my $current = $self->current // return;
+      return unless ref($current) eq ref($item); # not same "type"
+      if (ref($current)) { # references, check for identity
+         return if refaddr($current) != refaddr($item);
+      }
+      else { # plain scalars, equality will do
+         return if $current ne $item;
+      }
+      $self->current(undef); # definitely get rid of it
+      return;
    }
 
-   sub advance ($self) {
-      my $n = 0;
-      $n += $self->_advance($_) for $self->ends->@*;
-      return $n;
+   sub successor_for ($self, $direction) {
+      return $self->succ_for->{$direction} // undef;
+   }
+
+   sub set_ui_data_recurse ($self, $href) {
+      return if $self->ui_data;
+      $self->ui_data($href->{$self->id});
+      $_->set_ui_data_recurse($href) for values $self->succ_for->%*;
+      return $self;
+   }
+
+   sub resolve_positions ($self, $position_for) {
+      for my $p (values $self->succ_for->%*) {
+         next if ref $p;
+         $p = $position_for->{$p};
+      }
+      return $self;
    }
 }
 
+package GnW::Interaction {
+   use Moo;
+   use warnings;
+   use experimental qw< postderef signatures >;
+   no warnings qw< experimental::postderef experimental::signatures >;
+   use Ouch ':trytiny_var';
 
+   has name => (is => 'rw', default => 'bump');
+   has position_for => (is => 'rw');
+   has action => (is => 'rw');
+
+   sub update ($self, $event, $game) {
+      my $action = $self->action or return $self->_default($event, $game);
+      $action->($self, $event, $game);
+      return $self;
+   }
+
+   sub _default ($self, $event, $game) { # this is a default implementation
+      my ($cpos, $tpos) = $self->position_for->@{qw< catcher target >};
+      my $target = $tpos->current or return;
+      my $catcher = $cpos->current or return;
+      $_->record_interaction($self->name) for ($target, $catcher);
+      return;
+   }
+
+   sub set_ui_data ($self, $href) {
+      $_->set_ui_data_recurse($href) for values $self->position_for->%*;
+      return $self;
+   }
+
+   sub resolve_positions ($self, $position_for) {
+      for my $p (values $self->position_for->%*) {
+         next if ref $p;
+         $p = $position_for->{$p};
+      }
+      return $self;
+   }
+}
+
+package GnW::Item {
+   use Moo;
+   use warnings;
+   use experimental qw< postderef signatures >;
+   no warnings qw< experimental::postderef experimental::signatures >;
+   use Ouch ':trytiny_var';
+   use Scalar::Util 'refaddr';
+
+   has id            => (is => 'rw', default => sub ($s) { refaddr($s) });
+   has position      => (is => 'rw');
+   has locked        => (is => 'rw', default => 0);
+   has direction_for => (is => 'rw', default => sub { return {} });
+   has _interaction  => (is => 'rw', default => undef);
+
+   sub update ($self, $event) {
+
+      # skip if it's not an event this object would normally react to
+      my $df = $self->direction_for->{$event} or return $self;
+
+      my $position = $self->position;
+      if ($position && ! $self->locked) {
+         $position->remove_if_current($self);
+         my $interaction = $self->_interaction // 'default';
+         my ($x, $y) = $position->ui_data->@{qw< x y >};
+         $log->("event<$event> interaction<$interaction> position($x, $y)");
+         my $direction = $df->{$interaction};
+         $self->move_to($position->successor_for($direction));
+      }
+
+      # whatever happened, any interaction is cleared for next round
+      $self->_interaction(undef);
+      return $self;
+   }
+
+   sub move_to ($self, $position) {
+      $self->position($position);
+      $position->current($self);
+      return $self;
+   }
+
+   sub record_interaction($self, $interaction) {
+      $self->_interaction($interaction);
+      return $self;
+   }
+
+   sub resolve_position ($self, $position_for) {
+      my $p = $self->position;
+      $p = $position_for->{$p} unless ref $p;
+      $self->move_to($p);
+      return $self;
+   }
+}
+
+package GnW::Source {
+   use Moo;
+   use warnings;
+   use experimental qw< postderef signatures >;
+   no warnings qw< experimental::postderef experimental::signatures >;
+   use Ouch ':trytiny_var';
+
+   extends 'GnW::Interaction';
+
+   sub _default ($self, $event, $game) { # this is a default implementation
+      return unless $event eq 'advance';
+      state $counter = 0;
+      return if $counter++ % 5;
+      my $pf = $self->position_for;
+      my ($position) = exists $pf->{default} ? $pf->{default}
+         : map {$pf->{$_}} sort {$a cmp $b} keys $pf->%*;
+      $game->add_item(
+         GnW::Item->new(
+            position => $position,
+            locked   => 0,
+            direction_for => {
+               advance => {
+                  default => 'default',
+                  bump    => 'alternative',
+               },
+            },
+         )
+      );
+      return;
+   }
+}
+
+package GnW::Sink {
+   use Moo;
+   use warnings;
+   use experimental qw< postderef signatures >;
+   no warnings qw< experimental::postderef experimental::signatures >;
+   use Ouch ':trytiny_var';
+
+   extends 'GnW::Interaction';
+
+   sub _default ($self, $event, $game) {
+      $log->('sink', $self->name);
+      while (my ($counter, $position) = each $self->position_for->%*) {
+         my $item = $position->current or next;
+         $log->("   have current $item -> $counter");
+         $game->increase($counter);
+         $game->remove_item($item);
+      }
+      return;
+   }
+}
+
+package GnW::Counter {
+   use Moo;
+   use warnings;
+   use experimental qw< postderef signatures >;
+   no warnings qw< experimental::postderef experimental::signatures >;
+   use Ouch ':trytiny_var';
+   use Scalar::Util qw< blessed refaddr >;
+
+   has name  => (is => 'rw', default => 'foo');
+   has value => (is => 'rw', default => 0);
+   has max   => (is => 'rw', default => undef);
+   has min   => (is => 'rw', default => undef);
+   has upper_threshold => (is => 'rw', default => undef);
+   has lower_threshold => (is => 'rw', default => undef);
+
+   sub is_outside ($self) {
+      my $value = $self->value;
+      my $upper = $self->upper_threshold // $value;
+      my $lower = $self->lower_threshold // $value;
+      return ($value < $lower) || ($value > $upper);
+   }
+
+   sub increase ($self) {
+      die "counter @{[$self->name]} is outside thresholds\n"
+        if $self->is_outside;
+      my $value = $self->value;
+      my $max   = $self->max // ($value + 1);
+      $self->value($value + 1) if $value < $max;
+      return $self;
+   }
+
+   sub decrease ($self) {
+      die "counter @{[$self->name]} is outside thresholds\n"
+        if $self->is_outside;
+      my $value = $self->value;
+      my $min   = $self->min // ($value - 1);
+      $self->value($value - 1) if $value > $min;
+      return $self;
+   }
+}
+
+package GnW::Game {
+   use Moo;
+   use warnings;
+   use experimental qw< postderef signatures >;
+   no warnings qw< experimental::postderef experimental::signatures >;
+   use Ouch ':trytiny_var';
+   use Scalar::Util qw< blessed refaddr >;
+   use GnW::Counter;
+
+   use constant MAX_MISSES => 3;
+
+   has counter_for => (
+      is => 'rw',
+      default => sub {
+         return {
+            score => GnW::Counter->new(name => 'score'),
+            miss  => GnW::Counter->new(
+               name => 'miss',
+               upper_threshold => MAX_MISSES,
+            ),
+         };
+      },
+   );
+   has interactions => (is => 'rw', default => sub { return [] });
+   has _items => (is => 'rw', default => sub { return {} });
+   has _changes => (is => 'rw', default => sub { return {} });
+
+   around BUILDARGS => sub ($orig, $class, @args) {
+      my %args = @args && ref($args[0]) ? $args[0]->%* : @args;
+      if (my $definition = delete $args{definition}) {
+         %args = (%args, $class->_revive($definition));
+      }
+      if (my $items = delete $args{items}) {
+         $args{_items} = { map {refaddr($_) => $_} $items->@* };
+      }
+      return $class->$orig(\%args);
+   };
+
+   sub n_items ($self) { return scalar keys $self->_items->%* }
+   sub add_item ($self, $item) {
+      $self->_items->{refaddr($item)} = $item;
+      return $self;
+   }
+   sub remove_item ($self, $item) {
+      delete $self->_items->{refaddr($item)};
+      return $self;
+   }
+   sub items ($self) { return values $self->_items->%* }
+
+   sub increase ($self, $name) {
+      $self->counter_for->{$name}->increase;
+      $self->_changes->{$name}++;
+      return $self;
+   }
+   sub decrease ($self, $name) {
+      $self->counter_for->{$name}->decrease;
+      $self->_changes->{$name}++;
+      return $self;
+   }
+   sub total ($self, $name) { return $self->counter_for->{$name}->value }
+   sub last_update_changes ($self) { return $self->_changes->%* }
+
+   sub update ($self, $event) { # e.g. advance, move, ...
+      $self->_changes({}); # reset
+      $_->update($event) for values $self->_items->%*;
+      $_->update($event, $self)  for $self->interactions->@*;
+      return $self;
+   }
+
+   sub is_over ($self) { $self->counter_for->{'miss'}->is_outside }
+
+   sub set_ui_data ($self, $href) {
+      $_->set_ui_data($href) for $self->interactions->@*;
+      return $self;
+   }
+
+   sub __instance($default_class, $candidate) {
+      return $candidate if blessed($candidate);
+      my %args = $candidate->%*;
+      my $class = delete($args{_class}) // $default_class;
+      return $class->new(%args);
+   }
+
+   sub _revive ($class, $href) {
+      my ($positions, $interactions, $items) = map { $_ // [] }
+         $href->@{qw< positions interactions items >};
+
+      # handle positions. First create them all, then link them based
+      # on a translation from their identifier to their reference
+      my %position_for;
+      for my $i ($positions->@*) {
+         my $p = __instance('GnW::Position', $i);
+         my $id = $p->id;
+         die "duplicate position id $id\n" if exists $position_for{$id};
+         $position_for{$id} = $p;
+      }
+      $_->resolve_positions(\%position_for) for values %position_for;
+
+      # now handle interactions. Positions are all ok by now
+      my @interactions = map {
+         my $i = __instance('GnW::Interaction', $_);
+         $i->resolve_positions(\%position_for);
+         $i;
+      } $interactions->@*;
+
+      # now place any initial item
+      my @items = map {
+         my $i = __instance('GnW::Item', $_);
+         $i->resolve_position(\%position_for);
+         $i;
+      } $items->@*;
+
+      return (
+         interactions => \@interactions,
+         items        => \@items,
+      );
+   }
+}
+
+my $demo = {
+   positions => [
+      { id => 'traj-11', succ_for => { default => 'traj-12' } },
+      { id => 'traj-12', succ_for => { default => 'bumped-1' } },
+      {
+         id => 'bumped-1',
+         succ_for => {
+            default     => 'pre-miss',
+            alternative => 'traj-21',
+         },
+      },
+      { id => 'traj-21', succ_for => { default => 'traj-22' } },
+      { id => 'traj-22', succ_for => { default => 'score' } },
+      { id => 'pre-miss', succ_for => { default => 'miss' } },
+      { id => 'miss' },
+      { id => 'score' },
+
+      { id => 'left', succ_for => { left => 'left', right => 'right' } },
+      { id => 'right', succ_for => { left => 'left', right => 'right' } },
+   ],
+   interactions => [
+      {
+         name => 'source',
+         _class => 'GnW::Source',
+         position_for => { default => 'traj-11' },
+      },
+      {
+         name => 'sink',
+         _class => 'GnW::Sink',
+         position_for => { score => 'score', miss => 'miss' },
+      },
+      {
+         name => 'bump',
+         position_for => {
+            catcher => 'right',
+            target  => 'bumped-1',
+         },
+      },
+   ],
+   items => [
+      {
+         locked => 0,
+         position => 'left',
+         direction_for => {
+            left  => {default => 'left',  bump => 'left'},
+            right => {default => 'right', bump => 'right'},
+         },
+      }
+   ],
+};
+
+my $demo_curses = {
+   'traj-11'  => { x => 1, y =>  3, draw => '*', erase => ' '},
+   'traj-12'  => { x => 3, y =>  5, draw => '*', erase => ' '},
+   'bumped-1' => { x => 5, y =>  9, draw => '*', erase => ' '},
+   'pre-miss' => { x => 5, y => 11, draw => '~', erase => ' '},
+   'traj-21'  => { x => 7, y =>  5, draw => '*', erase => ' '},
+   'traj-22'  => { x => 9, y =>  3, draw => '*', erase => ' '},
+
+   'left'     => { x => 1, y => 10, draw => '-', erase => ' '},
+   'right'    => { x => 5, y => 10, draw => '-', erase => ' '},
+};
+
+package Demo::Game::Curses {
+   use Moo;
+   use 5.024001;
+   use warnings;
+   use experimental qw< postderef signatures >;
+   no warnings qw< experimental::postderef experimental::signatures >;
+   use Curses;
+   use Time::HiRes qw< sleep >;
+
+   use GnW::Game;
+
+   sub _update ($self, $game, $event, $win) {
+      for my $item ($game->items) {
+         $win->addstr($item->position->ui_data->@{qw< y x erase >});
+      }
+      $game->update($event);
+      $win->addstr(1, 1, 'total: ' . ($game->total('score') // 0));
+      $win->addstr(1, 20, 'miss: ' . ($game->total('miss') // 0));
+      $win->refresh;
+      for my $item ($game->items) {
+         $win->addstr($item->position->ui_data->@{qw< y x draw >});
+      }
+      $win->refresh;
+   }
+
+   sub run ($self) {
+      my $game = GnW::Game->new(definition => $demo);
+      $game->set_ui_data($demo_curses);
+      my $win = Curses->new;
+      curs_set(0);
+      noecho();
+      $win->nodelay(1);
+      $win->timeout(1);
+      my $c = 0;
+      DONE:
+      while (! $game->is_over) {
+         while ((my $key = $win->getch()) ne ERR) {
+            last DONE if $key eq 'q';
+            $self->_update($game, 'left', $win) if $key eq 'a';
+            $self->_update($game, 'right', $win) if $key eq 'l';
+         }
+         $self->_update($game, 'advance', $win);
+         sleep 1;
+      }
+      endwin();
+   }
+}
+
+package Kasai::Curses {
+   use Moo;
+   use 5.024001;
+   use warnings;
+   use experimental qw< postderef signatures >;
+   no warnings qw< experimental::postderef experimental::signatures >;
+   use Curses;
+   use Time::HiRes qw< sleep >;
+
+   has trajectories => (is => 'rw');
+   has field        => (is => 'rw');
+
+   sub _read_field ($self, $field) {
+      open my $fh, '<', \$field or die "open(): $!\n";
+
+      my @field;
+      my %pos_for;
+      my $y = 0;
+      $pos_for{path} = \my @path;
+      $pos_for{savers} = \my @savers;
+
+      my @paths;
+      while (<$fh>) {
+         my ($type, @line) = split m{}mxs;
+         if ($type eq '$') { # where the score will be
+            for my $x (0 .. $#line) {
+               if ($line[$x] eq '$') {
+                  $pos_for{score} = [$y, $x];
+                  $line[$x] = ' ';
+               }
+            }
+         }
+         elsif ($type eq '0') {
+            $pos_for{miss} = \my @misses;
+            for my $x (0 .. $#line) {
+               if ($line[$x] eq '0') {
+                  push @misses, [$y, $x];
+                  $line[$x] = ' ';
+               }
+            }
+         }
+         elsif (($type eq '@') || ($type eq '?')) {
+            for my $x (0 .. $#line) {
+               (my $v = $line[$x]) =~ m{\d}mxs or next;
+               my $tp = Kasai::TrajectoryPosition->new(
+                  position => {x => $x, y => $y},
+                  can_fail => ($type eq '?'),
+               );
+               push @{$paths[$v]}, $tp;
+               $line[$x] = ' ';
+            }
+         }
+         elsif ($type eq '!') {
+            $_ = '-' for @line;
+         }
+         elsif ($type eq '&') {
+            for (my $x = 0; $x < @line; ) {
+               if ($line[$x] eq '@') {
+                  push @savers, [$y, $x];
+                  while ($line[$x] ne ' ') {
+                     $line[$x++] = ' ';
+                  }
+               }
+               else {
+                  $x++;
+               }
+            }
+         }
+         push @field, \@line;
+         ++$y;
+      }
+
+      use Data::Dumper; $Data::Dumper::Indent = 1;
+
+      my @starts;
+      for my $p (@paths) {
+         my ($s, @p) = sort {($a->{x} <=> $b->{x}) || ($a->{y} <=> $b->{y})} @$p;
+         push @starts, $s;
+         ($s->{next}, $s) = ($_, $_) for @p;
+         $s->{next} = $starts[0] if @starts > 1;
+      }
+      shift @starts;
+
+      print Dumper \@starts; exit 0;
+
+      return {
+         field => \@field,
+         pos_for => \%pos_for,
+         paths => \@starts,
+      };
+   }
+}
+
+use Demo::Game::Curses;
+my $dc = Demo::Game::Curses->new;
+$dc->run;
+exit 0;
 
 __DATA__
 $[  ~~~~~ ~~~~            $                         MISS
