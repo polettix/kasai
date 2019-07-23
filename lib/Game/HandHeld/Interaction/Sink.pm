@@ -9,13 +9,15 @@ package Game::HandHeld::Interaction::Sink {
 
    sub update ($self, $event) {
       my $game = $self->game;
+      my @dels;
       while (my ($counter, $position) = each $self->position_for->%*) {
          for my $item ($position->guests) {
             $item->leave($position);
             $game->increase($counter);
-            $game->remove_item($item); # might happen multiple times
+            push @dels, $item;
          }
       }
+      $game->remove_item($_) for @dels; # might happen multiple times
       return;
    }
 }
