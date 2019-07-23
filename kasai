@@ -12,104 +12,11 @@ BEGIN {
 }
 
 use Curses;
-use Time::HiRes qw< sleep >;
 
 use constant WIDTH  => 80;
 use constant HEIGHT => 24;
 
 my $log = sub { say {*STDERR} "@_" };
-
-# my $field = read_field();
-# use Data::Dumper;
-# print Dumper($field);
-# #exit 0;
-# 
-# initscr();
-# curs_set(0);
-# my $win = Curses->new;
-# #for my $x (0 .. WIDTH - 1) {
-# #   for my $y (0 .. HEIGHT - 1) {
-# #      $win->addstr($y, $x, '.');
-# #   }
-# #   $win->refresh;
-# #   sleep 0.5;
-# #}
-# 
-# 
-# $win->nodelay(1);
-# $field->{men} = [[$field->{pos_for}{start}{A}, 0]];
-# $field->{score} = 9;
-# refresh_field($win, $field);
-# DONE:
-# while ('necessary') {
-#    while ((my $key = $win->getch()) ne ERR) {
-#       last DONE if $key eq 'q';
-#    }
-#    my @men = splice @{$field->{men}};
-#    for my $man (@men) {
-#       if (my $m = move_man($win, $field, $man)) {
-#          push @{$field->{men}}, $m;
-#       }
-#       else {
-#          $field->{score}++;
-#       }
-#    }
-#    $win->refresh;
-#    sleep 0.5;
-# }
-# 
-# 
-# endwin();
-# 
-sub increase_score {
-   my ($win, $field) = @_;
-   $field->{score} += 1;
-   wwrite($win, $field->{pos_for}{score}, $field->{score});
-   return $win;
-}
-
-sub wwrite {
-   my ($win, $p, $text) = @_;
-   $win->addstr($p->[0], $p->[1], $text);
-   return $win;
-}
-
-sub move_man {
-   my ($win, $field, $man) = @_;
-   my ($sequence, $n) = @$man;
-   wwrite($win, $sequence->[$n], ' ');
-   ++$n;
-   if ($n > $#$sequence) {
-      my $path = $field->{pos_for}{path};
-      if ("$path" ne "$sequence") {
-         ($sequence, $n) = ($path, 0);
-      }
-      else {
-         increase_score($win, $field);
-         return;
-      }
-   }
-   wwrite($win, $sequence->[$n], '@');
-   return [$sequence, $n];
-}
-
-sub refresh_field {
-   my ($win, $field) = @_;
-   my @f = @{$field->{field}};
-   for my $y (0 .. $#f) {
-      my $line = $f[$y];
-      for my $x (0 .. $#$line) {
-         $win->addstr($y, $x, $line->[$x]);
-      }
-   }
-   for my $man (@{$field->{men}}) {
-      my $pos = $man->[0][$man->[1]];
-      wwrite($win, $pos, '@');
-   }
-   wwrite($win, $field->{pos_for}{score}, $field->{score});
-   $win->refresh();
-   return $win;
-}
 
 package GnW::Position {
    use Moo;
