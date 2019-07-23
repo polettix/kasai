@@ -4,6 +4,13 @@ use warnings;
 use experimental qw< postderef signatures >;
 no warnings qw< experimental::postderef experimental::signatures >;
 
+BEGIN {
+   if (!eval { require Curses }) {
+      require FindBin;
+      eval "use lib '$FindBin::Bin/local/lib/perl5'";
+   }
+}
+
 use Curses;
 use Time::HiRes qw< sleep >;
 
