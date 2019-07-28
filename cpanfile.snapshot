@@ -48,6 +48,40 @@ DISTRIBUTIONS
       ExtUtils::MakeMaker 0
       Sub::Exporter::Progressive 0.001011
       perl 5.006
+  Log-Any-1.707
+    pathname: P/PR/PREACTION/Log-Any-1.707.tar.gz
+    provides:
+      Log::Any 1.707
+      Log::Any::Adapter 1.707
+      Log::Any::Adapter::Base 1.707
+      Log::Any::Adapter::File 1.707
+      Log::Any::Adapter::Null 1.707
+      Log::Any::Adapter::Stderr 1.707
+      Log::Any::Adapter::Stdout 1.707
+      Log::Any::Adapter::Syslog 1.707
+      Log::Any::Adapter::Test 1.707
+      Log::Any::Adapter::Util 1.707
+      Log::Any::Manager 1.707
+      Log::Any::Proxy 1.707
+      Log::Any::Proxy::Null 1.707
+      Log::Any::Proxy::Test 1.707
+      Log::Any::Test 1.707
+    requirements:
+      B 0
+      Carp 0
+      Data::Dumper 0
+      Exporter 0
+      ExtUtils::MakeMaker 0
+      Fcntl 0
+      File::Basename 0
+      FindBin 0
+      IO::File 0
+      Storable 0
+      Sys::Syslog 0
+      Test::Builder 0
+      constant 0
+      strict 0
+      warnings 0
   Module-Build-0.4229
     pathname: L/LE/LEONT/Module-Build-0.4229.tar.gz
     provides:
@@ -194,3 +228,10 @@ DISTRIBUTIONS
       strict 0
       version 0
       warnings 0
+  Try-Catch-1.1.0
+    pathname: M/MA/MAMOD/Try-Catch-1.1.0.tar.gz
+    provides:
+      Try::Catch 1.001000
+    requirements:
+      ExtUtils::MakeMaker 0
+      perl v5.6.0

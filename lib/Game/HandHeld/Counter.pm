@@ -27,12 +27,13 @@ package Game::HandHeld::Counter {
       my $new_value = $self->value + $delta;
       if ($delta < 0) {
          my $min = $self->min;
-         $new_value = $min if $new_value < $min;
+         $new_value = $min if defined $min && $new_value < $min;
       }
       elsif ($delta > 0) {
          my $max = $self->max;
-         $new_value = $max if $new_value > $max;
+         $new_value = $max if defined $max && $new_value > $max;
       }
+      $self->value($new_value);
       return $self;
 
    }

@@ -1,12 +1,13 @@
 use 5.024;
 
-package GnW::Item {
+package Game::HandHeld::Item {
    use Moo;
    use warnings;
    use experimental qw< postderef signatures >;
    no warnings qw< experimental::postderef experimental::signatures >;
    use Ouch ':trytiny_var';
    use Scalar::Util qw< blessed refaddr >;
+   use Log::Any '$log';
 
    has id            => (is => 'ro', default => sub ($s) { refaddr($s) });
    has direction_for => (is => 'ro', default => sub { return {} });
@@ -14,30 +15,28 @@ package GnW::Item {
    has _positions    => (is => 'ro', default => sub { return {} });
    has _interactions => (is => 'ro', default => sub { return {} });
 
-   around BUILDARGS => sub ($orig, $class, @args) {
-      my %args = @args && (ref $args[0] eq 'HASH') ? $args[0]->%* : @args;
-      if (my $positions = delete $args{positions}) {
-         ouch 400, 'invalid positions as input to item'
-            unless ref $positions eq 'ARRAY';
-         my $screen = $args{field} // undef;
-         my %position_for;
-         for my $p ($positions->@*) {
-            my $position = blessed($p) ? $p
-               : blessed($screen) ? $screen->get_position($p)
-               : ouch 400, 'cannot resolve position by name without screen';
-            $position_for{$position->id} = $position;
-         }
-         $args{_positions} = \%position_for;
-      }
-
-      return $class->$orig(%args);
-   };
+   sub BUILD ($self, $args) {
+      my $positions = defined($args->{position}) ? [$args->{position}]
+         : defined($args->{positions}) ? $args->{positions}
+         : [];
+      ouch 400, 'invalid positions as input to item'
+         unless ref $positions eq 'ARRAY';
+      my $screen = $self->game->screen;
+      $self->move_into(
+         map {
+            blessed($_) ? $_
+               : blessed($screen) ? $screen->get_position($_)
+               : ouch 400, 'cannot resolve position without screen';
+         } $positions->@*
+      );
+      return;
+   }
 
    sub update ($self, $event) { # default implementation
       my $df = $self->direction_for->{$event}
          or return $self; # skip if not handling this $event
 
-      my @interactions = values $self->_interactions->%*;
+      my @interactions = keys $self->_interactions->%*;
       @interactions = ('default') unless @interactions;
       for my $position ($self->positions) {
          INTERACTION:
@@ -45,7 +44,7 @@ package GnW::Item {
             next INTERACTION unless exists $df->{$interaction};
             my $direction = $df->{$interaction};
             $self->leave($position);
-            $self->register_into($position->successor_for($direction));
+            $self->register_into($position->neighbor_towards($direction));
             last INTERACTION; # left the $position, move on
          }
       }
@@ -59,7 +58,10 @@ package GnW::Item {
 
    sub register_into ($self, @positions) {
       my $pf = $self->_positions;
-      $pf->{$_->id} = $_ for @positions;
+      for my $p (@positions) {
+         $pf->{$p->id} = $p;
+         $p->register($self);
+      }
       return $self;
    }
 
@@ -78,9 +80,13 @@ package GnW::Item {
       return $self;
    }
 
-   sub record_interaction($self, $interaction) {
+   sub record_interaction ($self, $interaction) {
       $self->_interactions->{$interaction} = 1;
       return $self;
+   }
+
+   sub has_interaction ($self, $interaction) {
+      return $self->_interactions->{$interaction} // 0;
    }
 }
 

@@ -18,7 +18,7 @@ package Game::HandHeld::Position {
    has _succ_for => (
       is => 'ro',
       default => sub { return {} },
-      init_arg => 'successor_for',
+      init_arg => 'neighbor_towards',
    );
 
    # item management interface

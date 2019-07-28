@@ -7,6 +7,7 @@ package Game::HandHeld {
    use Ouch ':trytiny_var';
    use Scalar::Util qw< blessed refaddr >;
    use Module::Runtime 'use_module';
+   use Log::Any '$log';
 
    use Game::HandHeld::Counter;
 
@@ -30,15 +31,15 @@ package Game::HandHeld {
    );
 
    has _interactions => (
-      is => 'ro',
+      is => 'rw',
       default => sub { return [] },
       init_arg => 'interactions',
    );
 
    has _items => (is => 'rw', default => sub { return {} });
 
-   has screen => (
-      is => 'ro',
+   has _screen => (
+      is => 'rw',
       isa => sub ($x) { blessed($x) && $x->isa('Game::HandHeld::Screen') },
       default => sub {
          require Game::HandHeld::Screen;
@@ -54,11 +55,13 @@ package Game::HandHeld {
 
    has _ticks => (is => 'rw', clearer => 1, default => 0);
 
+   sub screen ($self) { return $self->_screen }
+
    sub _instance ($self, $default_class, $instance) {
       if (! blessed($instance //= {})) {
          my %args = $instance->%*;
          my $class = delete($args{_class}) // $default_class;
-         $instance = use_module($class)->new(%args);
+         $instance = use_module($class)->new(%args, game => $self);
       }
       $instance->game($self) if $instance->can('game');
       return $instance;
@@ -70,7 +73,7 @@ package Game::HandHeld {
       # screen with positions
       my $scr = $self->_instance('Game::HandHeld::Screen', $args{screen});
       $scr->add_positions((delete($args{positions}) // [])->@*);
-      $self->screen($scr);
+      $self->_screen($scr);
 
       my @ints = map {$self->_instance('Game::HandHeld::Interaction', $_)}
          ($args{interactions} // [])->@*;
@@ -80,7 +83,7 @@ package Game::HandHeld {
          ($args{items} // [])->@*;
       $self->_items({map {refaddr($_) => $_} @items});
 
-      my @syevs = map {$self->_instance('Game::HandHeld::SyncEvents', $_)}
+      my @syevs = map {$self->_instance('Game::HandHeld::SyncEvent', $_)}
          ($args{sync_events} // [])->@*;
       $self->_sync_events(\@syevs);
    }

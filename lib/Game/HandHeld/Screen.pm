@@ -6,6 +6,7 @@ package Game::HandHeld::Screen {
    use experimental qw< postderef signatures >;
    no warnings qw< experimental::postderef experimental::signatures >;
    use Ouch ':trytiny_var';
+   use Try::Catch;
    use Scalar::Util qw< blessed refaddr weaken >;
    use Module::Runtime 'use_module';
    use Game::HandHeld::Position;
@@ -38,7 +39,7 @@ package Game::HandHeld::Screen {
 
    sub get_position ($self, $x) {
       return $x if blessed $x;
-      ouch 400, ' cannot handle reference input ' . ref($x);
+      ouch 400, 'cannot handle reference input ' . ref $x if ref $x;
       my $pf = $self->_position_for;
       ouch 404, "Not Found '$x'" unless exists $pf->{$x};
       return $pf->{$x};
@@ -47,7 +48,8 @@ package Game::HandHeld::Screen {
    sub set_ui_data ($self, @as) {
       my %data_for = @as && ref $as[0] eq 'HASH' ? $as[0]->%* : @as;
       while (my ($name, $data) = each %data_for) {
-         $self->get_position($name)->ui_data($data);
+         try { $self->get_position($name)->ui_data($data) }
+         catch { die $_ unless kiss(404) };
       }
       return $self;
    }
