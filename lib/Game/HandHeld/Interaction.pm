@@ -34,8 +34,11 @@ package Game::HandHeld::Interaction {
       my ($catcher) = $cpos->guests or return;
       my $name = $self->name;
       if (! grep { $_->has_interaction($name) } ($target, $catcher)) {
-         $_->record_interaction($name) for ($target, $catcher);
+
+         # Update counters before recording interactions, so that items
+         # can see the updated value in case
          $self->game->increase($name);
+         $_->record_interaction($name) for ($target, $catcher);
       }
       return;
    }

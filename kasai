@@ -72,6 +72,11 @@ my $demo = {
       { id => 'left', neighbor_towards => { left => 'left', right => 'center' } },
       { id => 'center', neighbor_towards => { left => 'left', right => 'right' } },
       { id => 'right', neighbor_towards => { left => 'center', right => 'right' } },
+
+      { id => 'miss-0' },
+      { id => 'miss-1' },
+      { id => 'miss-2' },
+      { id => 'miss-3' },
    ],
    interactions => [
       {
@@ -105,6 +110,11 @@ my $demo = {
             target  => 'bumped-3',
          },
       },
+      {
+         name => 'refresh',
+         _class => 'Game::HandHeld::Interaction::Trigger',
+         items_for => { advance => ['misses'] },
+      },
    ],
    items => [
       {
@@ -115,6 +125,13 @@ my $demo = {
             center => {default => 'center', catch => 'center'},
             right  => {default => 'right',  catch => 'right'},
          },
+      },
+      {
+         _class => 'Game::HandHeld::Item::Extensible',
+         id => 'misses',
+         locked => 0,
+         positions => [qw< miss-0 miss-1 miss-2 miss-3 >],
+         direction_for => { },
       }
    ],
    sync_events => [
@@ -167,6 +184,10 @@ my $demo_curses = {
       'left'     => { x =>  3, y => 12, draw => '@---@', erase => '     '},
       'center'   => { x => 25, y => 12, draw => '@---@', erase => '     '},
       'right'    => { x => 43, y => 12, draw => '@---@', erase => '     '},
+
+      'miss-1' => { x => 30, y => 2, draw => '0', erase => ' ' },
+      'miss-2' => { x => 32, y => 2, draw => '0', erase => ' ' },
+      'miss-3' => { x => 34, y => 2, draw => '0', erase => ' ' },
 
       _counter => {
          score => { x => 26, y =>  0 },

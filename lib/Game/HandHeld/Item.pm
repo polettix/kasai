@@ -22,7 +22,7 @@ package Game::HandHeld::Item {
       ouch 400, 'invalid positions as input to item'
          unless ref $positions eq 'ARRAY';
       my $screen = $self->game->screen;
-      $self->move_into(
+      $self->register_into(
          map {
             blessed($_) ? $_
                : blessed($screen) ? $screen->get_position($_)

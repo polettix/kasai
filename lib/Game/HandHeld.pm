@@ -20,7 +20,7 @@ package Game::HandHeld {
       default => sub {
          my $score = Game::HandHeld::Counter->new;
          my $misses = Game::HandHeld::Counter->new(
-            upper_threshold => (GO_MISSES - 1),   
+            upper_threshold => (GO_MISSES - 1),
          );
          return {
             score => $score,
@@ -75,13 +75,13 @@ package Game::HandHeld {
       $scr->add_positions((delete($args{positions}) // [])->@*);
       $self->_screen($scr);
 
+      my @items = map {$self->_instance('Game::HandHeld::Item', $_)}
+         ($args{items} // [])->@*;
+      $self->_items({map {$_->id => $_} @items});
+
       my @ints = map {$self->_instance('Game::HandHeld::Interaction', $_)}
          ($args{interactions} // [])->@*;
       $self->_interactions(\@ints);
-
-      my @items = map {$self->_instance('Game::HandHeld::Item', $_)}
-         ($args{items} // [])->@*;
-      $self->_items({map {refaddr($_) => $_} @items});
 
       my @syevs = map {$self->_instance('Game::HandHeld::SyncEvent', $_)}
          ($args{sync_events} // [])->@*;
@@ -113,11 +113,14 @@ package Game::HandHeld {
 
    # items facility
    sub add_item ($self, $item) {
-      $self->_items->{refaddr($item)} = $item;
+      $self->_items->{$item->id} = $item;
       return $self;
    }
+   sub get_item ($self, $item_id) {
+      return $self->_items->{$item_id} // undef;
+   }
    sub remove_item ($self, $item) {
-      delete $self->_items->{refaddr($item)};
+      delete $self->_items->{$item->id};
       return $self;
    }
    sub items ($self) { return values $self->_items->%* }
