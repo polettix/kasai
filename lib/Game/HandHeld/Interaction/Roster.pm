@@ -1,6 +1,6 @@
 use 5.024;
 
-package Game::HandHeld::Interaction::Source {
+package Game::HandHeld::Interaction::Roster {
    use Moo;
    use experimental qw< postderef signatures >;
    no warnings qw< experimental::postderef experimental::signatures >;
@@ -17,7 +17,22 @@ package Game::HandHeld::Interaction::Source {
       clearer  => 1,
    );
 
-   sub _build__current ($s) { return {$s->roster->[$s->index]->%*} }
+   sub _build__current ($self) {
+      my $index   = $self->index;
+      my $current = $self->roster->[$index];
+      if (!ref $current) {    # parse and cache, on the fly
+         my ($event, $skip, $position) = split m{\s+}mxs, $current;
+         $current = $self->roster->[$index] = {
+            event => $event,
+            skip  => $skip,
+         };
+         $current->{item} = {
+            tags      => [$event],
+            positions => [$position],
+         } if defined $position;
+      } ## end if (!ref $current)
+      return {$current->%*};
+   } ## end sub _build__current ($self)
 
    sub _match_event ($self, $event, $models) {
       $models = [$models] unless ref $models eq 'ARRAY';
@@ -41,14 +56,14 @@ package Game::HandHeld::Interaction::Source {
          $current->{skip}--;
          return;
       }
-      my $specs = $current->{items};
+      my $specs = $current->{items} // [];
       $specs = [$current->{item}] if exists $current->{item};
       $self->game->add_items($specs->@*);
       $self->_set_index(($self->index + 1) % ($self->roster->@*));
       $self->_clear_current;
       return;
    } ## end sub update
-} ## end package Game::HandHeld::Interaction::Source
+} ## end package Game::HandHeld::Interaction::Roster
 
 1;
 __END__
