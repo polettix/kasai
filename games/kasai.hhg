@@ -1,0 +1,272 @@
+# vim: ts=2 sts=2 sw=2 et ai :
+---
+interactions:
+
+  # "helper" moves are always honored
+  - _class: 'Game::HandHeld::Interaction::Mover'
+    name: 'helpers'
+    cleans_interactions: 1
+    by_event: 1
+    events:
+      - left
+      - right
+    next_hop_for:
+      left:
+        H-L: H-L
+        H-C: H-L
+        H-R: H-C
+      right:
+        H-L: H-C
+        H-C: H-R
+        H-R: H-R
+
+  # this freezes the action when there's a miss
+  - id: 'miss-pause'
+    _class: 'Game::HandHeld::Interaction::Skipper'
+    skip_events: 2
+    events:
+      - regex: '(?mxs:\A advance \d+ \z)'
+
+  # this generates new bouncers
+  - _class: 'Game::HandHeld::Interaction::Roster'
+    roster:
+      - advance1 0 s-1
+      - advance1 23 s-1
+      - advance1 23
+
+  # "normal" moves
+  - _class: 'Game::HandHeld::Interaction::Mover'
+    cleans_interactions: 1
+    events:
+      - regex: '(?mxs:\A advance \d+ \z)'
+    selector: [['event']]
+    next_hop_for:
+      # visible trajectory sections
+      T-1-1: T-1-2
+      T-1-2: T-1-3
+      T-1-3: T-1-5
+      T-1-4: T-1-5
+      T-1-5: T-1-6
+      T-1-6: [l-1, L-1]   # lose is the default next
+      T-2-0: T-2-1
+      T-2-1: T-2-2
+      T-2-2: T-2-3
+      T-2-3: T-2-4
+      T-2-4: T-2-5
+      T-2-5: T-2-6
+      T-2-6: T-2-7
+      T-2-7: T-2-8
+      T-2-8: [l-2, L-2]
+      T-3-0: T-3-1
+      T-3-1: T-3-2
+      T-3-2: T-3-3
+      T-3-3: T-3-4
+      T-3-4: T-3-5
+      T-3-5: T-3-6
+      T-3-6: [l-3, L-3]
+      T-4-0: T-4-1
+      T-4-1: T-4-2
+      T-4-2: T-4-3
+      T-4-3: ~
+      L-1:   ~
+      L-2:   ~
+      L-3:   ~
+
+      # visible starting positions
+      T-1-1.1: T-1-1
+      T-1-1.2: T-1-1.1
+      T-1-4.1: T-1-4
+      T-1-4.2: T-1-4.1
+      T-1-4.3: T-1-4.2
+      T-1-4.4: T-1-4.3
+
+      # invisible starters and paths
+      s-1: t-1-1
+      t-1-1: t-1-2
+      t-1-2: T-1-1
+      s-2: t-2-1
+      t-2-1: T-1-1.1
+      s-3: T-1-1.2
+      s-4: t-4-1
+      t-4-1: t-4-2
+      t-4-2: t-4-3
+      t-4-3: t-4-4
+      t-4-4: T-1-4
+      s-5: t-5-1
+      t-5-1: t-5-2
+      t-5-2: t-5-3
+      t-5-3: T-1-4.1
+      s-6: t-6-1
+      t-6-1: t-6-2
+      t-6-2: T-1-4.2
+      s-7: t-7-1
+      t-7-1: T-1-4.3
+      s-8: T-1-4.4
+
+  - _class: 'Game::HandHeld::Interaction::Trigger'
+    events:
+      - regex: '(?mxs:\A advance \d+ \z)'
+    targets:
+      - miss-pause
+    skip_rest: 0
+    condition:
+        _class: 'Game::HandHeld::Condition::PositionIsBusy'
+        positions:
+          - l-1
+          - l-2
+          - l-3
+
+  # bounces
+  - _class: 'Game::HandHeld::Interaction::CollisionDetector'
+    triggers:
+      - next_hop_for:
+          H-L: H-L
+      - counter: score
+        next_hop_for:
+          T-1-6: T-2-0
+  - _class: 'Game::HandHeld::Interaction::CollisionDetector'
+    triggers:
+      - next_hop_for:
+          H-C: H-C
+      - counter: score
+        next_hop_for:
+          T-2-8: T-3-0
+  - _class: 'Game::HandHeld::Interaction::CollisionDetector'
+    triggers:
+      - next_hop_for:
+          H-R: H-R
+      - counter: score
+        next_hop_for:
+          T-3-6: T-4-0
+
+  # misses
+  - _class: 'Game::HandHeld::Interaction::CollisionDetector'
+    triggers:
+      - counter: miss
+        next_hop_for:
+          l-1: ~
+          l-2: ~
+          l-3: ~
+
+  # reflect misses as occupied positions
+  - _class: 'Game::HandHeld::Interaction::CounterReflector'
+    counter: 'miss'
+    item: 'M'
+    positions:
+      - M-1
+      - M-2
+      - M-3
+
+items:
+  - position: 'H-L' # helpers
+
+positions:
+  # hidden starters
+  - s-1
+  - s-2
+  - s-3
+  - s-4
+  - s-5
+  - s-6
+  - s-7
+  - s-8
+
+  # hidden intermediates
+  - t-1-1
+  - t-1-2
+  - t-2-1
+  - t-4-1
+  - t-4-2
+  - t-4-3
+  - t-4-4
+  - t-5-1
+  - t-5-2
+  - t-5-3
+  - t-6-1
+  - t-6-2
+  - t-7-1
+
+  # visible overlappers
+  - T-1-1.1
+  - T-1-1.2
+  - T-1-4.1
+  - T-1-4.2
+  - T-1-4.3
+  - T-1-4.4
+
+  # visible sections
+  - T-1-1
+  - T-1-2
+  - T-1-3
+  - T-1-4
+  - T-1-5
+  - T-1-6
+  - T-2-0
+  - T-2-1
+  - T-2-2
+  - T-2-3
+  - T-2-4
+  - T-2-5
+  - T-2-6
+  - T-2-7
+  - T-2-8
+  - T-3-0
+  - T-3-1
+  - T-3-2
+  - T-3-3
+  - T-3-4
+  - T-3-5
+  - T-3-6
+  - T-4-0
+  - T-4-1
+  - T-4-2
+  - T-4-3
+
+  # invisible losing intermediates
+  - l-1
+  - l-2
+  - l-3
+
+  # visible losing positions
+  - L-1
+  - L-2
+  - L-3
+
+  # helpers
+  - H-L
+  - H-C
+  - H-R
+
+  # miss indicator
+  - M-1
+  - M-2
+  - M-3
+
+sync_events:
+  - _class: 'Game::HandHeld::SyncEvent::Loop'
+    sequence:
+      - tick
+      - tick
+      - tick
+      - tick
+      - advance1
+      - tick
+      - tick
+      - tick
+      - tick
+      - advance2
+      - tick
+      - tick
+      - tick
+      - tick
+      - advance3
+      - tick
+      - tick
+      - tick
+      - tick
+      - advance4
+      - tick
+      - tick
+      - tick
+      - tick
+      - advance5

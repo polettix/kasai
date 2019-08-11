@@ -1,0 +1,231 @@
+# vim: ts=2 sts=2 sw=2 et ai ft=yaml :
+---
+
+position:
+  T-1-1:
+    x: 1
+    y: 3
+    draw:  '*'
+    erase: ' '
+    overlaps:
+      - T-1-1.1
+      - T-1-1.2
+
+  T-1-2:
+    x: 2
+    y: 4
+    draw:  '*'
+    erase: ' '
+
+  T-1-3:
+    x: 3
+    y: 6
+    draw:  '*'
+    erase: ' '
+
+  T-1-4:
+    x: 1
+    y: 6
+    draw:  '*'
+    erase: ' '
+    overlaps:
+      - T-1-4.1
+      - T-1-4.2
+      - T-1-4.3
+      - T-1-4.4
+
+  T-1-5:
+    x: 4
+    y: 8
+    draw:  '*'
+    erase: ' '
+
+  T-1-6:
+    x: 5
+    y: 11
+    draw:  '*'
+    erase: ' '
+    overlaps:
+      - T-2-0
+
+  T-2-1:
+    x: 7
+    y: 8
+    draw:  '*'
+    erase: ' '
+
+  T-2-2:
+    x: 9
+    y: 6
+    draw:  '*'
+    erase: ' '
+
+  T-2-3:
+    x: 12
+    y: 4
+    draw:  '*'
+    erase: ' '
+
+  T-2-4:
+    x: 16
+    y: 3
+    draw:  '*'
+    erase: ' '
+
+  T-2-5:
+    x: 20
+    y: 4
+    draw:  '*'
+    erase: ' '
+
+  T-2-6:
+    x: 23
+    y: 6
+    draw:  '*'
+    erase: ' '
+
+  T-2-7:
+    x: 25
+    y: 8
+    draw:  '*'
+    erase: ' '
+
+  T-2-8:
+    x: 27
+    y: 11
+    draw:  '*'
+    erase: ' '
+    overlaps:
+      - T-3-0
+
+  T-3-1:
+    x: 29
+    y: 8
+    draw:  '*'
+    erase: ' '
+
+  T-3-2:
+    x: 32
+    y: 6
+    draw:  '*'
+    erase: ' '
+
+  T-3-3:
+    x: 36
+    y: 5
+    draw:  '*'
+    erase: ' '
+
+  T-3-4:
+    x: 40
+    y: 6
+    draw:  '*'
+    erase: ' '
+
+  T-3-5:
+    x: 43
+    y: 8
+    draw:  '*'
+    erase: ' '
+
+  T-3-6:
+    x: 45
+    y: 11
+    draw:  '*'
+    erase: ' '
+    overlaps:
+      - T-4-0
+
+  T-4-1:
+    x: 47
+    y: 9
+    draw:  '*'
+    erase: ' '
+
+  T-4-2:
+    x: 50
+    y: 8
+    draw:  '*'
+    erase: ' '
+
+  T-4-3:
+    x: 53
+    y: 9
+    draw:  '*'
+    erase: ' '
+
+  L-1:
+    x: 5
+    y: 13
+    draw:  'XXX'
+    erase: '---'
+
+  L-2:
+    x: 27
+    y: 13
+    draw:  'XXX'
+    erase: '---'
+
+  L-3:
+    x: 45
+    y: 13
+    draw:  'XXX'
+    erase: '---'
+
+  M-1:
+    x: 51
+    y: 1
+    draw:  '0'
+    erase: ' '
+
+  M-2:
+    x: 53
+    y: 1
+    draw:  '0'
+    erase: ' '
+
+  M-3:
+    x: 55
+    y: 1
+    draw:  '0'
+    erase: ' '
+
+  H-L:
+    x: 3
+    y: 12
+    draw:  '@---@'
+    erase: '     '
+
+  H-C:
+    x: 25
+    y: 12
+    draw:  '@---@'
+    erase: '     '
+
+  H-R:
+    x: 43
+    y: 12
+    draw:  '@---@'
+    erase: '     '
+
+counter:
+  score:
+    x: 26
+    y: 0
+
+background: |-
+  [  ~~~~~ ~~~~                                      MISS
+  |=~~~~ ~~~                                              
+  |~~~
+  [                
+  |=                   
+  |                                    
+  [                                        
+  |=
+  |                                                  
+  [                                                     
+  |=                                                     __n_
+  |                                                     [ +  \
+  [                                                     "o--o"
+  ------------------------------------------------------------
+
