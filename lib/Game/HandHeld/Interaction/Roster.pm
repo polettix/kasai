@@ -5,7 +5,6 @@ package Game::HandHeld::Interaction::Roster {
    use experimental qw< postderef signatures >;
    no warnings qw< experimental::postderef experimental::signatures >;
    use Ouch ':trytiny_var';
-   use Game::HandHeld::Item;
 
    extends 'Game::HandHeld::Interaction';
 

@@ -50,9 +50,7 @@ package Game::HandHeld::Interface::Curses {
 
    sub _build__win ($self) {
       my $win = Curses->new;
-      warn 'here';
       curs_set(0);
-      $log->debug('here');
       noecho();
       $win->keypad(1);
       __set_bg($win, $self->_background);
@@ -65,7 +63,6 @@ package Game::HandHeld::Interface::Curses {
       my $cpf  = $self->_counters;
       while (my ($counter, $ui_data) = each $cpf->%*) {
          my $value = $game->total($counter) // 0;
-         $log->debug("counter<$counter><$value>");
          $win->addstr($ui_data->@{qw< y x >}, $value);
       }
    } ## end sub _update_counters ($self)
@@ -123,7 +120,10 @@ package Game::HandHeld::Interface::Curses {
          $win->addstr(3, 20, 'GAME OVER');
          $win->refresh;
          $win->timeout(-1);
-         $win->getch;
+         while (my ($ch, $key) = $win->getch) {
+            next unless defined($key //= $ch);
+            last if $key eq 'q' || $key eq "\x{1b}";
+         }
       } ## end if ($game->is_over)
       return;
    } ## end sub run ($self)

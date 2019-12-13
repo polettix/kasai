@@ -10,6 +10,7 @@ package Game::HandHeld::Interaction::CollisionDetector {
    use Log::Any '$log';
 
    extends 'Game::HandHeld::Interaction';
+   with 'Game::HandHeld::Role::TagManipulator';
 
    # this is a AoH
    has triggers => (
@@ -58,18 +59,23 @@ package Game::HandHeld::Interaction::CollisionDetector {
             my $next_hop = $nhf->{$pos} // [];
             map { [$_, $pos, $next_hop] } $game->position($pos)->items
          } keys $nhf->%* or return;    # no items, no party
+         my %tag = ($trigger->{tag} // {})->%*;
          push @present,
            {
-            operands => \@operands,
-            counters => $trigger->{counters} // [],
+            operands    => \@operands,
+            counters    => $trigger->{counters} // [],
+            remove_tags => $tag{remove} // [],
+            add_tags    => $tag{add} // [],
            };
       } ## end for my $trigger ($triggers...)
 
       # here I have to enact over items at specific positions
       for my $fired (@present) {
+         my @items;
          for my $operand ($fired->{operands}->@*) {
             my ($item_id, $pre, $post) = $operand->@*;
             my $item = $game->item($item_id);
+            push @items, $item;
             $item->leave($pre);
             $item->register_into(ref $post ? $post->@* : $post);
 
@@ -82,6 +88,11 @@ package Game::HandHeld::Interaction::CollisionDetector {
                $game->counter_delta($n, $d);
             }
          } ## end for my $operand ($fired...)
+
+         # retag all items
+         $self->remove($fired->{remove_tags});
+         $self->add($fired->{add_tags});
+         $self->change_tags({event => $event}, @items);
       } ## end for my $fired (@present)
 
       return;

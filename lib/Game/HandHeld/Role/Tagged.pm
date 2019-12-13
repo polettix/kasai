@@ -6,7 +6,7 @@ package Game::HandHeld::Role::Tagged {
    no warnings qw< experimental::postderef experimental::signatures >;
    use Scalar::Util 'blessed';
    use List::Util 'first';
-   use Ouch;
+   use Ouch ':trytiny_var';
    use Game::HandHeld::Collection;
    use Log::Any '$log';
    use namespace::clean;
@@ -27,8 +27,30 @@ package Game::HandHeld::Role::Tagged {
       },
    );
 
-   sub tags ($self) {
-      return sort { $a <=> $b } keys $self->_tags->%*;
+   sub tags ($self, @filters) {
+      my %tags = $self->_tags->%*;
+
+      if (@filters) {
+         my @all_tags = keys %tags;
+         TAG:
+         for my $tag (@all_tags) {
+            for my $filter (@filters) {
+               my $fref = ref $filter;
+               if ($fref eq 'Regexp') {
+                  next TAG if $tag =~ $filter;
+               }
+               elsif ($fref) {
+                  ouch 'invalid-spec', "invalid filter for tags ($fref)";
+               }
+               else {
+                  next TAG if $tag eq $filter;
+               }
+            }
+            delete $tags{$tag}; # no match, no party
+         }
+      }
+
+      return sort { $a cmp $b } keys %tags;
    }
 
    sub has_tags ($self, @tags) {
@@ -38,6 +60,18 @@ package Game::HandHeld::Role::Tagged {
       }
       return 1;
    } ## end sub has_tags
+
+   sub remove_tags ($self, @tags) {
+      my $tags = $self->_tags;
+      delete $tags->{$_} for @tags;
+      return $self;
+   }
+
+   sub add_tags ($self, @tags) {
+      my $tags = $self->_tags;
+      $tags->{$_} = 1 for @tags;
+      return $self;
+   }
 };
 
 1;

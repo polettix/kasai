@@ -6,7 +6,7 @@ package Game::HandHeld::Role::Interactive {
    no warnings qw< experimental::postderef experimental::signatures >;
    use Scalar::Util 'blessed';
    use List::Util 'first';
-   use Ouch;
+   use Ouch ':trytiny_var';
    use Game::HandHeld::Collection;
    use namespace::clean;
 

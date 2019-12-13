@@ -10,6 +10,7 @@ package Game::HandHeld::Interaction::Mover {
    use Log::Any '$log';
 
    extends 'Game::HandHeld::Interaction';
+   with 'Game::HandHeld::Role::TagSelector';
 
    has by_event     => (is => 'ro', default => 0);
    has cleans_items => (is => 'ro', default => 1);
@@ -27,40 +28,6 @@ package Game::HandHeld::Interaction::Mover {
       },
    );
 
-   has selector => (
-      is      => 'ro',
-      default => sub { return [] },
-      coerce  => sub ($x) {
-         ouch 'undefined-selector', 'undefined selector'
-           unless defined $x;
-         $x = [$x] unless ref $x;
-         ouch 'invalid-selector', 'invalid selector, must be array'
-           unless ref $x eq 'ARRAY';
-         return $x;
-      },
-   );
-
-   sub _selector ($self, $event) {
-      my @selector;
-      for my $s ($self->selector->@*) {
-         my $sref = ref $s;
-         if (!$sref) { push @selector, $s }
-         elsif ($sref eq 'ARRAY') {
-            my ($cmd, @args) = $s->@*;
-            if ($cmd eq 'event') {
-               push @selector, $event;
-            }
-            else {
-               ouch 'invalid-selector', "invalid selection cmd '$cmd'";
-            }
-         } ## end elsif ($sref eq 'ARRAY')
-         else {
-            ouch 'invalid-selector', "invalid selector ref $sref";
-         }
-      } ## end for my $s ($self->selector...)
-      return \@selector;
-   } ## end sub _selector
-
    sub update ($self, $event) {
       my $nhf = $self->next_hop_for;
       $nhf = $nhf->{$event} if $self->by_event;
@@ -68,7 +35,7 @@ package Game::HandHeld::Interaction::Mover {
         "event '$event' has no next_hop_for definition"
         unless defined $nhf;
       my $game = $self->game;
-      for my $item ($game->items(tags => $self->_selector($event))) {
+      for my $item ($self->select_items($event)) { # from ::TagSelector
          my $item_id = $item->id;
          my @new_pos;
          for my $pos_id ($item->positions) {

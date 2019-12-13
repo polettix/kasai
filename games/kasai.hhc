@@ -155,19 +155,19 @@ position:
     erase: ' '
 
   L-1:
-    x: 5
+    x: 4
     y: 13
     draw:  'XXX'
     erase: '---'
 
   L-2:
-    x: 27
+    x: 26
     y: 13
     draw:  'XXX'
     erase: '---'
 
   L-3:
-    x: 45
+    x: 44
     y: 13
     draw:  'XXX'
     erase: '---'
