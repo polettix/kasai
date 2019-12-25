@@ -12,9 +12,12 @@ package Game::HandHeld::Role::TagManipulator {
    has add    => (is => 'rw', default => sub { return [] });
 
    sub change_tags ($self, $meta_for, @items) {
-      my @remove = $self->expand_tags($meta_for, $self->remove->@*);
-      my @add = $self->expand_tags($meta_for, $self->add->@*);
-      $_->remove_tags($_->tags(@remove))->add_tags(@add) for @items;
+      if (my @remove = $self->expand_tags($meta_for, $self->remove->@*)) {
+         $_->remove_tags($_->tags(@remove)) for @items;
+      }
+      if (my @add = $self->expand_tags($meta_for, $self->add->@*)) {
+         $_->add_tags(@add) for @items;
+      }
       return $self;
    } ## end sub update
 
