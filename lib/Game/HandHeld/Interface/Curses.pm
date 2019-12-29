@@ -20,9 +20,9 @@ package Game::HandHeld::Interface::Curses {
      (is => 'ro', required => 1, init_arg => 'counter');
    has _win => (is => 'lazy', predicate => 1);
 
-   sub new_from_files ($class, $game_file, $curses_file) {
-      my $game = Game::HandHeld->new_from_file($game_file);
-      my $data = Game::HandHeld->data_from_file($curses_file);
+   sub new_from_files ($class, %args) {
+      my $game = Game::HandHeld->new_from_file($args{game});
+      my $data = Game::HandHeld->data_from_file($args{ui});
       return $class->new(
          $data->%*,
          game => $game,
