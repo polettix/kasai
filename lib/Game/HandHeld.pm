@@ -278,6 +278,13 @@ package Game::HandHeld {
 
    # sync events
    sub sync_events ($self) { return $self->_sync_events->@* }
+   sub increase_speed ($self, $amount = 1) {
+      $_->speed($_->speed + $amount) for $self->sync_events;
+      return $self;
+   }
+   sub decrease_speed ($self, $amount = 1) {
+      return $self->increase_speed(-$amount);
+   }
 
    # game interface
    sub is_over ($self) { $self->counter_for('miss')->is_outside }

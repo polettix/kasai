@@ -8,6 +8,9 @@ package Game::HandHeld::SyncEvent {
    use Ouch ':trytiny_var';
    use namespace::autoclean;
 
+   has speed => (is => 'rw', default => 0);
+   has speed_prefix => (is => 'rw', default => '');
+
    sub tick ($self, $n) { ouch 'abstract-class', 'override this class' }
 } ## end package Game::HandHeld::SyncEvent
 
