@@ -65,13 +65,18 @@ package Game::HandHeld {
 
    sub _build_counter_for ($self, $spec) {
       $spec //= [
-         score => {},
-         catch => 'score',
-         miss  => { upper_threshold => (GO_MISSES - 1) },
+         {
+            score => {},
+            miss  => { upper_threshold => (GO_MISSES - 1) },
+         },
+         {
+            catch => 'score'
+         },
       ];
+      $spec = [$spec] if ref $spec eq 'HASH';
       ouch 'invalid-counters', 'invalid counters definition'
          unless ref $spec eq 'ARRAY';
-      my @spec = $spec->@*;
+      my @spec = map {$_->%*} $spec->@*;
       ouch 'invalid-counters', 'counters aref must have even items'
          if @spec % 2;
       my $cf = $self->_counter_for;
