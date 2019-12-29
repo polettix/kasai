@@ -9,6 +9,7 @@ package Game::HandHeld::Interaction::Roster {
    extends 'Game::HandHeld::Interaction';
 
    has roster => (is => 'ro', required => 1);
+   has monitor_counter => (is => 'ro', default => undef);
    has index => (is => 'rwp', init_arg => undef, default => 0);
    has _current => (
       is       => 'lazy',
@@ -25,11 +26,14 @@ package Game::HandHeld::Interaction::Roster {
             event => $event,
             skip  => $skip,
          };
-         $current->{item} = {
-            tags      => [$event],
-            positions => [$position],
-         } if defined $position;
+         $current->{positions} = [$position] if defined $position;
       } ## end if (!ref $current)
+      $current->{positions} = [delete $current->{position}]
+         if exists $current->{position};
+      $current->{item} = {
+         tags => [$current->{event}],
+         positions => delete($current->{positions}),
+      } if exists $current->{positions};
       return {$current->%*};
    } ## end sub _build__current ($self)
 
@@ -51,13 +55,19 @@ package Game::HandHeld::Interaction::Roster {
    sub update ($self, $event) {
       my $current = $self->_current;
       return unless $self->_match_event($event, $current->{event});
+      if (defined(my $counter = $self->monitor_counter)) {
+         my $value = $self->game->total($counter) // 0;
+         $current->{skip} = 0 if $value == 0; # "skip" the skip
+      }
       if (($current->{skip} // 0) > 0) {
          $current->{skip}--;
          return;
       }
+      my $game = $self->game;
       my $specs = $current->{items} // [];
       $specs = [$current->{item}] if exists $current->{item};
-      $self->game->add_items($specs->@*);
+      $game->add_items($specs->@*);
+      $game->increase_speed($current->{speed_change}) if $current->{speed_change};
       $self->_set_index(($self->index + 1) % ($self->roster->@*));
       $self->_clear_current;
       return;
