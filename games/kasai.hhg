@@ -1,5 +1,12 @@
 # vim: ts=2 sts=2 sw=2 et ai :
 ---
+counters:
+  - score: {}
+    miss:
+      upper_threshold: 2
+    objects: {}
+  - catch: score
+
 interactions:
 
   # "helper" moves are always honored
@@ -29,10 +36,17 @@ interactions:
 
   # this generates new bouncers
   - _class: 'Game::HandHeld::Interaction::Roster'
+    monitor_counter: objects
     roster:
-      - advance1 0 s-1
-      - advance1 23 s-1
-      - advance1 23
+      - advance1 23 s-0   # one object at the beginning
+      - advance1 23 s-0   # 23 ticks of pause, then restart
+      - advance1 23 s-0   # 23 ticks of pause, then restart
+      - advance1 23 s-0
+      - advance3 10 s-1
+      - event: advance2   # this is in "full" form to enable for
+        speed_change: 1   # speed_change to increase speed by 1
+        skip: 5
+        position: s-1
 
   # "normal" moves
   - _class: 'Game::HandHeld::Interaction::Mover'
@@ -68,7 +82,7 @@ interactions:
       T-4-0: T-4-1
       T-4-1: T-4-2
       T-4-2: T-4-3
-      T-4-3: ~
+      T-4-3: final
       L-1:   ~
       L-2:   ~
       L-3:   ~
@@ -82,27 +96,19 @@ interactions:
       T-1-4.4: T-1-4.3
 
       # invisible starters and paths
-      s-1: t-1-1
+      s-1:   t-1-1
       t-1-1: t-1-2
-      t-1-2: T-1-1
-      s-2: t-2-1
-      t-2-1: T-1-1.1
-      s-3: T-1-1.2
-      s-4: t-4-1
+      s-2:   t-2-1
+      s-4:   t-4-1
       t-4-1: t-4-2
       t-4-2: t-4-3
       t-4-3: t-4-4
-      t-4-4: T-1-4
-      s-5: t-5-1
+      s-5:   t-5-1
       t-5-1: t-5-2
       t-5-2: t-5-3
-      t-5-3: T-1-4.1
-      s-6: t-6-1
+      s-6:   t-6-1
       t-6-1: t-6-2
-      t-6-2: T-1-4.2
-      s-7: t-7-1
-      t-7-1: T-1-4.3
-      s-8: T-1-4.4
+      s-7:   t-7-1
 
   - _class: 'Game::HandHeld::Interaction::Trigger'
     events:
@@ -140,14 +146,39 @@ interactions:
         next_hop_for:
           T-3-6: T-4-0
 
+  # new objects FIXME
+  - _class: 'Game::HandHeld::Interaction::CollisionDetector'
+    triggers:
+      - counter: objects
+        next_hop_for:
+          s-0:   T-1-1
+          t-1-2: T-1-1
+          t-2-1: T-1-1.1
+          s-3:   T-1-1.2
+          t-4-4: T-1-4
+          t-5-3: T-1-4.1
+          t-6-2: T-1-4.2
+          t-7-1: T-1-4.3
+          s-8:   T-1-4.4
+
   # misses
   - _class: 'Game::HandHeld::Interaction::CollisionDetector'
     triggers:
-      - counter: miss
+      - counters:
+          - miss
+          - objects: -1
         next_hop_for:
           l-1: ~
           l-2: ~
           l-3: ~
+
+  # exiting objects
+  - _class: 'Game::HandHeld::Interaction::CollisionDetector'
+    triggers:
+      - counters:
+          - objects: -1
+        next_hop_for:
+          final: ~
 
   # reflect misses as occupied positions
   - _class: 'Game::HandHeld::Interaction::CounterReflector'
@@ -163,6 +194,7 @@ items:
 
 positions:
   # hidden starters
+  - s-0
   - s-1
   - s-2
   - s-3
@@ -228,6 +260,9 @@ positions:
   - l-2
   - l-3
 
+  # invisible final landing position
+  - final
+
   # visible losing positions
   - L-1
   - L-2
@@ -245,29 +280,18 @@ positions:
 
 sync_events:
   - _class: 'Game::HandHeld::SyncEvent::Loop'
+    speed: 0
+    speed_prefix: tick
     sequence:
-      - tick
-      - tick
-      - tick
-      - tick
+      - tick0
+      - tick3
+      - tick6
       - advance1
-      - tick
-      - tick
-      - tick
-      - tick
+      - tick1
+      - tick4
+      - tick7
       - advance2
-      - tick
-      - tick
-      - tick
-      - tick
+      - tick2
+      - tick5
+      - tick8
       - advance3
-      - tick
-      - tick
-      - tick
-      - tick
-      - advance4
-      - tick
-      - tick
-      - tick
-      - tick
-      - advance5
