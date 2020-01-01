@@ -9,6 +9,7 @@ package Game::HandHeld::Interaction::Roster {
    extends 'Game::HandHeld::Interaction';
 
    has roster => (is => 'ro', required => 1);
+   has grace_period => (is => 'ro', default => 0);
    has monitor_counter => (is => 'ro', default => undef);
    has index => (is => 'rwp', init_arg => undef, default => 0);
    has _current => (
@@ -55,15 +56,18 @@ package Game::HandHeld::Interaction::Roster {
    sub update ($self, $event) {
       my $current = $self->_current;
       return unless $self->_match_event($event, $current->{event});
-      if (defined(my $counter = $self->monitor_counter)) {
-         my $value = $self->game->total($counter) // 0;
-         $current->{skip} = 0 if $value == 0; # "skip" the skip
-      }
-      if (($current->{skip} // 0) > 0) {
-         $current->{skip}--;
-         return;
-      }
       my $game = $self->game;
+      if (($current->{skip} //= 0) > 0) {
+         $current->{skip}--;
+         $current->{skipped}++;
+
+         if (defined(my $counter = $self->monitor_counter)) {
+            my $grace = $self->grace_period;
+            $current->{skip} = 0
+               if !$game->total($counter) && $current->{skipped} >= $grace;
+         }
+      }
+      return if $current->{skip};
       my $specs = $current->{items} // [];
       $specs = [$current->{item}] if exists $current->{item};
       $game->add_items($specs->@*);

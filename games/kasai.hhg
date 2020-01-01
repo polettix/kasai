@@ -37,11 +37,12 @@ interactions:
   # this generates new bouncers
   - _class: 'Game::HandHeld::Interaction::Roster'
     monitor_counter: objects
+    grace_period: 2
     roster:
-      - advance1 23 s-0   # one object at the beginning
-      - advance1 23 s-0   # 23 ticks of pause, then restart
-      - advance1 23 s-0   # 23 ticks of pause, then restart
-      - advance1 23 s-0
+      - advance1 23 s-1   # one object at the beginning
+      - advance1 23 s-1   # 23 ticks of pause, then restart
+      - advance1 23 s-1   # 23 ticks of pause, then restart
+      - advance1 23 s-1
       - advance3 10 s-1
       - event: advance2   # this is in "full" form to enable for
         speed_change: 1   # speed_change to increase speed by 1
