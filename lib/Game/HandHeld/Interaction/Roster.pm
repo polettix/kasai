@@ -72,6 +72,7 @@ package Game::HandHeld::Interaction::Roster {
       $specs = [$current->{item}] if exists $current->{item};
       $game->add_items($specs->@*);
       $game->increase_speed($current->{speed_change}) if $current->{speed_change};
+      $game->set_speed_counter;
       $self->_set_index(($self->index + 1) % ($self->roster->@*));
       $self->_clear_current;
       return;

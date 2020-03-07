@@ -6,6 +6,7 @@ package Game::HandHeld {
    no warnings qw< experimental::postderef experimental::signatures >;
    use Ouch ':trytiny_var';
    use Scalar::Util qw< blessed refaddr >;
+   use List::Util 'max';
    use Module::Runtime 'use_module';
    use Storable 'dclone';
    use Log::Any '$log';
@@ -284,6 +285,10 @@ package Game::HandHeld {
    }
    sub decrease_speed ($self, $amount = 1) {
       return $self->increase_speed(-$amount);
+   }
+   sub speeds ($self) { return map {$_->speed} $self->sync_events }
+   sub set_speed_counter ($self) {
+      $self->counter_for('speed')->value(max $self->speeds);
    }
 
    # game interface

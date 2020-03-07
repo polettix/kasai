@@ -1,11 +1,5 @@
 # vim: ts=2 sts=2 sw=2 et ai :
 ---
-counters:
-  - score: {}
-    miss:
-      upper_threshold: 2
-    objects: {}
-  - catch: score
 
 interactions:
 
@@ -39,15 +33,51 @@ interactions:
     monitor_counter: objects
     grace_period: 2
     roster:
+      # three one-man groups
       - advance1 23 s-1   # one object at the beginning
       - advance1 23 s-1   # 23 ticks of pause, then restart
       - advance1 23 s-1   # 23 ticks of pause, then restart
+
+      # two men groups
       - advance1 23 s-1
-      - advance3 10 s-1
-      - event: advance2   # this is in "full" form to enable for
-        speed_change: 1   # speed_change to increase speed by 1
+      - advance3 12 s-1
+
+      - advance2 23 s-1
+      - advance1 12 s-2
+
+      - advance2 23 s-1
+      - advance3 10 s-3
+
+      - advance1 20 s-1
+      - advance1 9  s-2
+
+      # three men slots
+      - advance2 20 s-1
+      - advance1 11 s-2
+      - advance3 11 s-3
+
+      - advance1 20 s-1
+      - advance2 10 s-3
+      - advance1 11 s-2
+
+      - advance3 18 s-1
+      - advance1 10 s-2
+      - advance2 10 s-3
+
+      - advance2 19 s-1
+      - advance3 8  s-3
+      - advance2 10 s-2
+
+      - advance1 17 s-1
+      - advance3 10 s-2
+      - advance1 9  s-3
+
+
+
+      # speed up a bit
+      - event: advance1   # this is in "full" form to enable for
+        speed_change: 3   # speed_change to increase speed by 1
         skip: 5
-        position: s-1
 
   # "normal" moves
   - _class: 'Game::HandHeld::Interaction::Mover'
@@ -111,6 +141,22 @@ interactions:
       t-6-1: t-6-2
       s-7:   t-7-1
 
+  # new objects get counted when they pass these gates
+  # they should correspond to becoming visible for the first time
+  - _class: 'Game::HandHeld::Interaction::CollisionDetector'
+    triggers:
+      - counter: objects
+        next_hop_for:
+          s-0:   T-1-1
+          t-1-2: T-1-1
+          t-2-1: T-1-1.1
+          s-3:   T-1-1.2
+          t-4-4: T-1-4
+          t-5-3: T-1-4.1
+          t-6-2: T-1-4.2
+          t-7-1: T-1-4.3
+          s-8:   T-1-4.4
+
   - _class: 'Game::HandHeld::Interaction::Trigger'
     events:
       - regex: '(?mxs:\A advance \d+ \z)'
@@ -146,21 +192,6 @@ interactions:
       - counter: score
         next_hop_for:
           T-3-6: T-4-0
-
-  # new objects FIXME
-  - _class: 'Game::HandHeld::Interaction::CollisionDetector'
-    triggers:
-      - counter: objects
-        next_hop_for:
-          s-0:   T-1-1
-          t-1-2: T-1-1
-          t-2-1: T-1-1.1
-          s-3:   T-1-1.2
-          t-4-4: T-1-4
-          t-5-3: T-1-4.1
-          t-6-2: T-1-4.2
-          t-7-1: T-1-4.3
-          s-8:   T-1-4.4
 
   # misses
   - _class: 'Game::HandHeld::Interaction::CollisionDetector'
@@ -296,3 +327,11 @@ sync_events:
       - tick5
       - tick8
       - advance3
+
+counters:
+  - score: {}
+    miss:
+      upper_threshold: 2
+    objects: {}
+    speed: {}
+  - catch: score
